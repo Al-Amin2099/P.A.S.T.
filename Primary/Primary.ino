@@ -1,19 +1,18 @@
 /*
 	This is for the primary module of Project P.A.S.T.
-	
 */
 
 // #include <virtualbotixRTC.h>
 #include <Arduino.h>
 #include <Wire.h>
-#include <MPU6050.h>
-#include <uRTCLib>
+#include <MPU9250.h>
+#include <uRTCLib.h>
 
-MPU6050 primaryMPU(Wire, 0x68);
+MPU9250 primaryMPU;
 
 char dow[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 
-// Defining the RTC
+// Defining the RTC
 uRTCLib primaryRTC(0x68); // 0x68 is the default I2C addres for the RTC module
 
 double M,Y,D,MN,H,S;
@@ -37,37 +36,37 @@ const int stahp = 7, stahp2 = 10;
 const int cw = 8, cw2 = 11;
 const int ccw = 6, ccw2 = 9;
 
-
 void setup() 
 {
+	Serial.begin(115200);
+
 	// Set date-time accordin to (seconds, minutes, hours, day of the week)
 	primaryRTC.set(0, 05, 21, 2, 22, 7, 2025);  
-    	
-	// Start communication with IMU
-	int status = primaryMPU.begin();
 
-	if(status < 0)
+	primaryMPU.setup(0x68);
+
+	// Start communication with IMU
+	//int status = primaryMPU.begin();
+
+	if(!primaryMPU.setup(0x68))
 	{
 		Serial.println("IMU initialization unsuccessful");
 		Serial.println("Status: ");
-		Serial.println(status);
 
 		while(1){}
-	}
+	}  
 
-	Serial.begin(115200);  
-   	pinMode(stahp,OUTPUT);  
-    	pinMode(cw,OUTPUT);  
-    	pinMode(ccw,OUTPUT);  
-    	pinMode(stahp2,OUTPUT);  
-    	pinMode(cw2,OUTPUT);  
-    	pinMode(ccw2,OUTPUT);
+  pinMode(stahp,OUTPUT);  
+  pinMode(cw,OUTPUT);  
+  pinMode(ccw,OUTPUT);  
+  pinMode(stahp2,OUTPUT);  
+  pinMode(cw2,OUTPUT);  
+	pinMode(ccw2,OUTPUT);
 
-    	
 	delay(5000);//wait before starting  	  
     	
-	mpu.calibrateGyro();  
-    	mpu.setThreshold(3); 
+	primaryMPU.calibrateAccelGyro();  
+  primaryMPU.calibrateMag(); 
 
 }
 
@@ -89,14 +88,24 @@ void loop()
 
 	//primaryRTC.updateTime();
 	lstTime();
-	recvdata();
+	receiveData();
 	pitchCheck();
 	yawCheck();
 	timer = millis();
-	Vector norm = mpu.readNormalizeGyro();
+	// Vector norm = primaryMPU.readNormalizeGyro();
 
-	yaw = yaw + norm.YAxis * timeStep;
-	pitch = pitch + norm.XAxis * timeStep;
+	// yaw = yaw + norm.YAxis * timeStep;
+	// pitch = pitch + norm.XAxis * timeStep;
+
+	if (primaryMPU.update()) 
+	{
+    float gyroX = primaryMPU.getGyroX();
+    float gyroY = primaryMPU.getGyroY();
+    float gyroZ = primaryMPU.getGyroZ();
+    
+    yaw = yaw + gyroY * timeStep;
+    pitch = pitch + gyroX * timeStep;
+	}
 
 	Serial.print("Yaw = ");
 	Serial.println(yaw);
@@ -124,25 +133,24 @@ void loop()
 */
 void receiveData()
 {
-	if(Serial.available() > -)
+	if(Serial.available() > 0)
 	{
 		String a = Serial.readString();
 		String v1, v2;
 
-		
 		// Separate string into parts and assign them to variables
 		for(int i = 0; i < a.length(); i++)
 		{
 			if(a.substring(i, i+1) == ",")
 			{
-				val2 = a.substring(0, i);
-				val1 = a.substring(i=1);
+				v2 = a.substring(0, i);
+				v1 = a.substring(i+1);
 				
 				break;
 			}
 		}
 
-		val = 90 = v1.toFloat();
+		val = 90 - v1.toFloat();
 		val2 = v2.toFloat();
 		temp = val2;
 	}
@@ -157,6 +165,7 @@ void receiveData()
 */
 void pitchCheck()
 {
+	
 	if((floor(pitch * 100)/100) == (floor(val * 100)/100))
 	{
 		digitalWrite(stahp, HIGH);
@@ -183,6 +192,7 @@ void pitchCheck()
 	{	
 		digitalWrite(ccw, LOW);
 	}
+
 }
 
 /*
@@ -194,6 +204,33 @@ void pitchCheck()
 void yawCheck()
 {
 	
+	if((floor(yaw * 100)) == (floor(val2 * 100)))
+	{  
+  	digitalWrite(stahp2,HIGH);  
+  }
+	else
+	{  
+  	digitalWrite(stahp2,LOW);  
+  }  
+  
+	if((floor(yaw * 100)) < (floor(val2 * 100)))
+	{  
+		digitalWrite(cw2,HIGH);  
+  }
+	else
+	{  
+  	digitalWrite(cw2,LOW);  
+  }  
+  
+	if((floor(yaw * 100)) > (floor(val2 * 100)))
+	{  
+  	digitalWrite(ccw2,HIGH);  
+  }
+	else
+	{  
+  	digitalWrite(ccw2,LOW);  
+  }  
+
 }
 
 /* 
@@ -204,6 +241,23 @@ void yawCheck()
 */
 void lstTime()
 {
-	
+	//Calculates local sidereal time based on this calculation,  
+
+	M = (double) primaryRTC.month();  
+	Y = (double) primaryRTC.year();  
+	D = (double) primaryRTC.day();  
+	MN = (double) primaryRTC.minute();  
+	H = (double) primaryRTC.hour();  
+	S = (double) primaryRTC.second();  
+	A = (double)(Y-2000) * 365.242199;  
+	B = (double)(M-1) * 30.4368499; 
+
+	double JDN2000 = A+B+(D-1) + (primaryRTC.hour() / 24);  
+	double decimalTime = H + (MN / 60)+(S / 3600);  
+  double LST = 100.46 + 0.985647 * JDN2000 + location + 15 * decimalTime;  
+
+  lstDegrees = (LST- (floor(LST / 360) * 360));  
+  lstHours = lstDegrees / 15; 
+
 }
 
