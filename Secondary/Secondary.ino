@@ -24,7 +24,7 @@ int stahp2 = 10;
 int cw = 6;
 int cw2 = 11;
 int ccw = 8;
-int cc2 = 9;
+int ccw2 = 9;
 
 bool stopped = false;
 bool stopped2 = false;
@@ -72,7 +72,7 @@ void motorPitch()
 
   if(digitalRead(ccw2) == HIGH)
   {
-    stepper2.setSpeed(-100)
+    stepper2.setSpeed(-100);
     stopped2 = false;
   }
 }
