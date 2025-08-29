@@ -1,3 +1,2 @@
-P.A.S.T.
-
+# P.A.S.T.
 Positional Astronomical Star Tracker
