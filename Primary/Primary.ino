@@ -2,6 +2,20 @@
 	This is for the primary module of Project P.A.S.T.
 */
 
+/*
+	Inputs:
+		1. Gyroscope data
+		2. Real time clock (RTC) data
+
+	Outputs:
+		1. CW - base motor clockwise rotation
+		2. CCW - base motor counter clockwise rotation
+		3. stah - sbase motor stop
+		4. cw2 - dec motor clockwise rotation
+		5. ccw2 - dec motor counter clockwise rotation
+		6. stahp2 - dec motor stop
+*/
+
 // #include <virtualbotixRTC.h>
 #include <Arduino.h>
 #include <Wire.h>
@@ -15,11 +29,11 @@ char dow[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Frid
 // Defining the RTC
 uRTCLib primaryRTC(0x68); // 0x68 is the default I2C addres for the RTC module
 
-double M,Y,D,MN,H,S;
+double M,Y,D,MN,H,S; // Month, Year, Day, Minute, Hour, Second
 double A,B;
-double location = -117.9175657;
-double lstDegrees;
-double lstHours;
+double location = -115.287539; // My current longitude - Las Vegas
+double lstDegrees; // Local sidereal time (lst) ind egrees
+double lstHours; // Local side real time in decimal hours
 
 unsigned long timer = 0;
 
