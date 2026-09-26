@@ -1,9 +1,14 @@
-# Arduino Uno R3 - pure avr-gcc/avrdude build, no Arduino IDE/core required
+# Arduino Nano - pure avr-gcc/avrdude build, no Arduino IDE/core required
+#
+# NOTE on BAUDRATE: classic Nanos with the "old bootloader" (most common
+# on cheap clones) flash at 57600. Nanos with the "new bootloader" use
+# 115200, same as an Uno. If `make upload` times out or reports
+# "not in sync", try switching this value.
 MCU = atmega328p
 F_CPU = 16000000UL
-PORT = /dev/ttyACM1
+PORT = /dev/ttyUSB0
 PROGRAMMER = arduino
-BAUDRATE = 115200
+BAUDRATE = 11520
 
 CC = avr-gcc
 OBJCOPY = avr-objcopy
@@ -15,27 +20,28 @@ LDFLAGS = -mmcu=$(MCU) -Wl,--gc-sections -lm
 
 OBJCOPYFLAGS = -O ihex -R .eeprom
 
-SRCS = Primary.c uart.c i2c.c rtc.c mpu.c
+SRCS = Secondary.c gpio.h stepper.c
+SRCS := $(filter %.c,$(SRCS))
 OBJS = $(SRCS:.c=.o)
 
-all: primary.hex
+all: secondary.hex
 
-primary.elf: $(OBJS)
+secondary.elf: $(OBJS)
 	$(CC) $(LDFLAGS) -o $@ $(OBJS)
 
-primary.hex: primary.elf
+secondary.hex: secondary.elf
 	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-upload: primary.hex
+upload: secondary.hex
 	$(AVRDUDE) -p $(MCU) -c $(PROGRAMMER) -P $(PORT) -b $(BAUDRATE) -U flash:w:$<:i
 
-size: primary.elf
+size: secondary.elf
 	avr-size --format=avr --mcu=$(MCU) $<
 
 clean:
 	rm -f *.o *.elf *.hex
 
-.PHONY: all upload clean size
+.PHONY: all upload size clean
